@@ -1,0 +1,65 @@
+name: data-quality
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  pipeline:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: round_1
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Lint
+        run: ruff check src tests
+
+      - name: Unit tests
+        run: python -m pytest tests -q
+
+      # The real gate: rebuild the cleaned dataset from the recovered raw
+      # files on every push. If the pipeline stops being reproducible, or
+      # the output stops satisfying the data contract, the build fails
+      # here rather than in the report.
+      - name: Run cleaning pipeline
+        run: python src/run_pipeline.py
+
+      - name: Enforce data contract
+        run: python src/validate.py
+
+      - name: Confirm expected row counts
+        run: |
+          python - <<'PY'
+          import pandas as pd
+          expected = {
+              "data/processed/posts_clean.csv":   12000,
+              "data/processed/users_clean.csv":    1500,
+              "data/processed/hashtags.csv":         29,
+              "data/processed/post_hashtags.csv": 20531,
+          }
+          for path, n in expected.items():
+              got = len(pd.read_csv(path))
+              assert got == n, f"{path}: expected {n} rows, got {got}"
+              print(f"OK  {path:<40} {got:>6} rows")
+          PY
+
+      - name: Upload cleaned dataset
+        uses: actions/upload-artifact@v4
+        with:
+          name: cleaned-dataset
+          path: |
+            round_1/data/processed/*.csv
+            round_1/data/processed/*.json

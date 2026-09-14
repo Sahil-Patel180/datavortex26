@@ -1,0 +1,17 @@
+round_1/data/interim/*
+!round_1/data/interim/.gitkeep
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+.ruff_cache/
+.ipynb_checkpoints/
+*.bak
+*.mdf
+*.ldf
+*.ndf
+.vs/
+.DS_Store
+Thumbs.db
+desktop.ini
