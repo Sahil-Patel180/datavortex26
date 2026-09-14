@@ -1,22 +1,12 @@
-"""End-to-end reproducible pipeline: raw -> processed + audit log.
-
-    python src/run_pipeline.py
-
-Deterministic. Re-running on the same inputs yields byte-identical outputs.
-"""
 from __future__ import annotations
-
 from datetime import datetime, timezone
-
 import pandas as pd
-
 import clean
 import config as cfg
 import features as feat
 from validate import validate_all
 
 AUDIT: list[dict] = []
-
 
 def log(step: str, issue: str, rows_affected: int, action: str) -> None:
     AUDIT.append(
@@ -30,7 +20,6 @@ def log(step: str, issue: str, rows_affected: int, action: str) -> None:
     print(f"[{step:>18}] {issue:<44} rows={rows_affected:<6} -> {action}")
 
 
-# --------------------------------------------------------------------------
 def clean_users() -> pd.DataFrame:
     raw = clean.load_raw(cfg.RAW_USERS)
     log("load.users", "raw rows read", len(raw), "ok")
@@ -54,13 +43,10 @@ def clean_users() -> pd.DataFrame:
     log("users.done", "clean rows written", len(users), str(cfg.CLEAN_USERS_CSV.name))
     return users
 
-
-# --------------------------------------------------------------------------
 def clean_posts(users: pd.DataFrame) -> pd.DataFrame:
     raw = clean.load_raw(cfg.RAW_POSTS)
     log("load.posts", "raw rows read", len(raw), "ok")
 
-    # --- 1. duplicates -----------------------------------------------------
     full_dupes = int(raw.duplicated().sum())
     id_dupes = int(raw["post_id"].duplicated().sum())
     posts, removed = clean.drop_duplicate_posts(raw)
@@ -71,7 +57,6 @@ def clean_posts(users: pd.DataFrame) -> pd.DataFrame:
         "dropped, kept first",
     )
 
-    # --- 2. missing-value sentinels ---------------------------------------
     for column in ("platform", "text_content", "likes"):
         empty = int((posts[column].astype(str).str.strip() == "").sum())
         literal = int(posts[column].astype(str).str.strip().str.upper().eq("NULL").sum())
@@ -82,7 +67,6 @@ def clean_posts(users: pd.DataFrame) -> pd.DataFrame:
             "unified to NA",
         )
 
-    # --- 3. text repair ----------------------------------------------------
     raw_text = posts["text_content"].astype(str)
     tags = int(raw_text.str.contains(r"<[^>]{1,40}>", regex=True).sum())
     entities = int(raw_text.str.contains(r"&(?:amp|lt|gt|quot|nbsp|#\d+);", regex=True).sum())
@@ -111,7 +95,6 @@ def clean_posts(users: pd.DataFrame) -> pd.DataFrame:
         "second sentinel pass -> NA",
     )
 
-    # --- 4. timestamps -----------------------------------------------------
     posts["ts_source_format"] = posts["timestamp"].map(clean.detect_ts_format)
     dayfirst_proof = clean.assert_dayfirst(posts["timestamp"])
     assert dayfirst_proof > 0, "day-first ordering could not be evidenced"
@@ -129,12 +112,10 @@ def clean_posts(users: pd.DataFrame) -> pd.DataFrame:
         "dayfirst asserted, not guessed",
     )
 
-    # --- 5. platform -------------------------------------------------------
     unknown = int(posts["platform"].map(clean.is_sentinel).sum())
     posts["platform"] = posts["platform"].map(clean.canon_platform)
     log("posts.platform", "missing platform", unknown, "-> 'Unknown' (never inferred)")
 
-    # --- 6. metrics --------------------------------------------------------
     for column, ceiling in (
         ("likes", cfg.LIKES_MAX),
         ("shares", cfg.SHARES_MAX),
@@ -166,7 +147,6 @@ def clean_posts(users: pd.DataFrame) -> pd.DataFrame:
             posts[column], _ = clean.impute_by_group(posts, column, ["platform"])
             log("posts.impute", f"{column} imputed", missing, "platform median")
 
-    # --- 7. referential integrity -----------------------------------------
     orphans = int((~posts["user_id"].isin(users["user_id"])).sum())
     log("posts.fk", "orphan user_id", orphans, "none found, FK is sound")
 
@@ -196,7 +176,6 @@ def clean_posts(users: pd.DataFrame) -> pd.DataFrame:
     return posts
 
 
-# --------------------------------------------------------------------------
 OUTPUT_COLUMNS = [
     "post_id", "user_id", "platform", "text_content", "posted_at",
     "ts_source_format", "likes", "likes_imputed", "shares", "comments",

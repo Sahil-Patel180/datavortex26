@@ -1,0 +1,25 @@
+step,issue,rows_affected,action
+load.users,raw rows read,1500,ok
+users.dedupe,duplicate user_id,0,kept first occurrence
+users.metrics,negative follower_count,0,set to NA
+users.done,clean rows written,1500,users_clean.csv
+load.posts,raw rows read,12360,ok
+posts.dedupe,duplicate post_id (360 full-row identical),360,"dropped, kept first"
+posts.nulls,"platform: '' = 1177, 'NULL' = 607",1784,unified to NA
+posts.nulls,"text_content: '' = 1154, 'NULL' = 557",1711,unified to NA
+posts.nulls,"likes: '' = 1199, 'NULL' = 615",1814,unified to NA
+posts.text,injected terminal noise token removed,1609,&amp; | <div> | <br> | \n\n | Ã© stripped from end
+posts.text,HTML tags stripped,646,<br>/<div> removed
+posts.text,HTML entities unescaped,328,&amp; -> &
+posts.text,mojibake repaired,306,latin-1 -> utf-8 round trip
+posts.text,whitespace squashed,988,collapsed to single space
+posts.text,leading/trailing space,329,trimmed
+posts.text,"disguised sentinels (NULL<div>, NULL&amp;)",1779,second sentinel pass -> NA
+posts.time,mixed formats unified,12000,iso8601 | unix_seconds | dd_mm_yyyy -> datetime
+posts.time,day-first ordering evidenced (day > 12),2113,"dayfirst asserted, not guessed"
+posts.platform,missing platform,1784,-> 'Unknown' (never inferred)
+posts.metrics,"likes outside [0, 5000]",509,set to NA (not abs(); abs would fabricate magnitude)
+posts.impute,likes imputed,2323,"group median (platform x ts_source_format), flagged"
+posts.fk,orphan user_id,0,"none found, FK is sound"
+posts.anomaly,contradictory sentiment detected,329,"flagged, retained"
+posts.anomaly,engagement |z| > 3 within platform,0,"flagged, retained"
