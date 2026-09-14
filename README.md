@@ -3,10 +3,7 @@
 Rebuilding the Social Engine. Round 1 submission: dataset recovery, intake
 restoration, and the SQL analytical core.
 
-![data-quality](https://github.com/USER/datavortex26/actions/workflows/ci.yml/badge.svg)
-
-> Replace `USER` in the badge URL with the GitHub account or org this repo
-> lives under.
+[![data-quality](https://github.com/Sahil-Patel180/datavortex26/actions/workflows/ci.yml/badge.svg)](https://github.com/Sahil-Patel180/datavortex26/actions/workflows/ci.yml)
 
 ---
 
@@ -20,7 +17,8 @@ that the system log names `node_07` as the last surviving node, the recovery
 shell accepts `connect node_07`, and Archive Node 07 serves the two CSVs.
 
 From there: 12,360 deliberately corrupted post records and 1,500 user records,
-restored to a 12,000-row analysis-ready dataset and loaded into SQL Server.
+restored to a 12,000-row analysis-ready dataset and normalised into four tables
+for the Phase 2 SQL core.
 
 ---
 
@@ -30,7 +28,7 @@ restored to a 12,000-row analysis-ready dataset and loaded into SQL Server.
 |---|---|
 | Raw posts | 12,360 × 8 |
 | Cleaned posts | 12,000 × 32 |
-| Users | 1,500 × 5 (already clean — verified, not assumed) |
+| Users | 1,500 × 6 (raw 5 cols; `location` split into city/country — source verified clean, not assumed) |
 | Distinct corruption mechanisms found | 9 |
 | Rows dropped | 360, all full-row duplicates |
 | Rows fabricated | 0 |
@@ -84,18 +82,23 @@ false positives.
 ## Reproduce
 
 ```bash
-git clone https://github.com/USER/datavortex26.git
+git clone https://github.com/Sahil-Patel180/datavortex26.git
 cd datavortex26/round_1
 pip install -r requirements.txt
 
 python src/run_pipeline.py     # raw -> processed, with a printed audit trail
 python src/validate.py         # enforce the data contract
-python -m pytest tests -q      # unit tests for every cleaning primitive
+python -m pytest -q            # unit tests for every cleaning primitive
+ruff check src tests           # lint
 ```
 
 The pipeline is deterministic: same inputs, byte-identical outputs. CI re-runs
 all four steps on every push, so a regression fails the build instead of
 reaching the report.
+
+Notebooks expect to be launched from `round_1/notebooks/` — the boot cell
+resolves `../src` relative to the kernel's working directory. `.vscode/settings.json`
+pins that with `jupyter.notebookFileRoot`.
 
 ### Phase 2 (SQL Server / SSMS)
 
@@ -122,29 +125,37 @@ login.
 ## Layout
 
 ```
-round_1/
-├── data/
-│   ├── raw/          recovered from Archive Node 07, never modified
-│   ├── interim/      staging
-│   └── processed/    posts_clean.csv/.json, users_clean.csv,
-│                     hashtags.csv, post_hashtags.csv, cleaning_audit.csv
-├── docs/
-│   ├── cleaning_decisions.md   every rule, every rejected alternative, and why
-│   ├── data_dictionary.md      schema of every output column
-│   └── site_recon.md           how the dataset was recovered
-├── notebooks/
-│   ├── 01_discovery_profiling.ipynb   profile the corruption BEFORE writing rules
-│   ├── 02_cleaning.ipynb              apply and audit
-│   └── 03_eda.ipynb                   exploratory analysis
-├── src/
-│   ├── config.py         paths, lexicons, catalogues — no magic literals elsewhere
-│   ├── clean.py          pure cleaning primitives
-│   ├── features.py       feature engineering + anomaly detection
-│   ├── validate.py       the data contract
-│   └── run_pipeline.py   orchestrator, emits cleaning_audit.csv
-├── sql/                  Phase 2, 00–08
-├── tests/                unit tests
-└── reports/              EDA report, Phase 2 insight report, figures
+datavortex26/
+├── .github/workflows/ci.yml    rebuild + contract enforcement on every push
+├── .vscode/settings.json       interpreter, analysis paths, notebook cwd
+├── LICENSE
+├── README.md
+└── round_1/
+    ├── pyproject.toml          pytest pythonpath, ruff source roots
+    ├── requirements.txt
+    ├── data/
+    │   ├── raw/                Social_Engine_Posts_Corrupted.csv, Social_Engine_Users.csv
+    │   │                       recovered from Archive Node 07, never modified
+    │   ├── interim/            staging
+    │   └── processed/          posts_clean.csv/.json, users_clean.csv,
+    │                           hashtags.csv, post_hashtags.csv, cleaning_audit.csv
+    ├── docs/
+    │   ├── cleaning_decisions.md   every rule, every rejected alternative, and why
+    │   ├── data_dictionary.md      schema of every output column
+    │   └── site_recon.md           how the dataset was recovered
+    ├── notebooks/
+    │   ├── 01_discovery_profiling.ipynb   profile the corruption BEFORE writing rules
+    │   ├── 02_cleaning.ipynb              apply and audit
+    │   └── 03_eda.ipynb                   exploratory analysis
+    ├── src/
+    │   ├── config.py         paths, lexicons, catalogues — no magic literals elsewhere
+    │   ├── clean.py          pure cleaning primitives
+    │   ├── features.py       feature engineering + anomaly detection
+    │   ├── validate.py       the data contract
+    │   └── run_pipeline.py   orchestrator, emits cleaning_audit.csv
+    ├── sql/                  Phase 2, 00–08
+    ├── tests/test_clean.py   24 unit tests
+    └── reports/              EDA_Report.pdf, figures/, Phase2_Insight_Report.md
 ```
 
 ---
@@ -183,21 +194,35 @@ catalogue from the corpus itself rather than from outside knowledge.
 
 ---
 
+## Team
+
+Two participants, as permitted by the rulebook (team size 1–2).
+
+| | |
+|---|---|
+| Members | Sahil Patel, Suhani Gupta |
+| Event | Data Vortex — Aaruush '26, SRMIST |
+| Round | 1, Phases 1 and 2 |
+| Repository | https://github.com/Sahil-Patel180/datavortex26 |
+
+---
+
 ## Submission checklist
 
 **Phase 1** — deadline 14 Sep 2026, 23:59
 
-- [x] Cleaned dataset (CSV **and** JSON)
-- [ ] EDA report (PDF) — export `notebooks/03_eda.ipynb` to `reports/EDA_Report.pdf`
+- [x] Cleaned dataset (CSV **and** JSON) — `round_1/data/processed/posts_clean.csv` / `.json`
+- [x] Exploratory Data Analysis report — `round_1/reports/EDA_Report.pdf`
 - [x] Code notebook / GitHub repository
-- [x] Cleaning code, documented
-- [x] Reproducible workflow
-- [ ] Google Form submitted
+- [x] Cleaning code, documented — `round_1/src/`, `round_1/docs/cleaning_decisions.md`
+- [x] Reproducible workflow — `run_pipeline.py` + CI
+- [x] Google Form submitted
 
 **Phase 2** — deadline 15 Sep 2026, 23:59
 
-- [x] SQL queries (`sql/04`–`sql/08`)
+- [x] SQL queries — `round_1/sql/04`–`08`
+- [x] Schema design explained — `round_1/sql/01_schema.sql`
+- [x] Logic explanation — inline in every `.sql` file
 - [ ] Output screenshots — SSMS grid **with the query text visible in the same frame**
-- [x] Logic explanation (inline in every `.sql` file)
-- [ ] Phase 2 insight report (PDF) → `reports/`
+- [ ] Phase 2 insight report (PDF) — `round_1/reports/`
 - [ ] Google Form submitted
