@@ -1,6 +1,6 @@
 # Phase 2 — Insight Report
 
-**Data Vortex, Aaruush '26 · Round 1 Phase 2 · Sahil Patel & Suhani Gupta · 15 September 2026**
+**Data Vortex, Aaruush '26 · Round 1 Phase 2 · Team Punch Queries (Sahil Patel & Suhani Gupta) · 15 September 2026**
 
 Repository: https://github.com/Sahil-Patel180/datavortex26
 Scripts: `round_1/sql/00`–`08` · Screenshots: `round_1/reports/figures/`

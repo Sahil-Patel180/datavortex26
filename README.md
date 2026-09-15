@@ -200,6 +200,7 @@ Two participants, as permitted by the rulebook (team size 1–2).
 
 | | |
 |---|---|
+| Team Name | Punch Queries |
 | Members | Sahil Patel, Suhani Gupta |
 | Event | Data Vortex — Aaruush '26, SRMIST |
 | Round | 1, Phases 1 and 2 |
